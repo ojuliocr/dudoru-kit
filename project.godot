@@ -1,0 +1,18 @@
+; Projeto mínimo só para abrir e testar o addon no editor.
+; Os jogos usam apenas a pasta addons/dudoru_kit.
+
+config_version=5
+
+[application]
+
+config/name="Dudoru Kit"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/dudoru_kit/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
