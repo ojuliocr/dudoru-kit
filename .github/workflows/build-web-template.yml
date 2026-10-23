@@ -1,0 +1,79 @@
+# Compila um export template Web enxuto do Godot (só o que um jogo 2D de UI usa)
+# pra caber no limite de 30MB descompactados da Legends of Learning, e publica
+# como Release deste repo. Os jogos baixam o zip daqui (CI e tools/sync-kit.ps1),
+# então ele não precisa ficar commitado em nenhum repositório.
+#
+# Rodar uma vez (e de novo só quando mudar a versão do Godot):
+#   Actions → Build Web Template → Run workflow
+# Resultado: Release "web-<versão>" com o arquivo web_nothreads_release.zip.
+
+name: Build Web Template
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+  EM_VERSION: "4.0.11"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Baixar o código do Godot
+        run: git clone --depth 1 --branch "${GODOT_VERSION}-stable" https://github.com/godotengine/godot.git godot
+
+      - name: Emscripten
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ env.EM_VERSION }}
+
+      - name: Python e SCons
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install scons
+
+      - name: Compilar
+        working-directory: godot
+        # Mantidos: GDScript, fontes (freetype + text server simples), OGG/Vorbis,
+        # WebP (texturas Lossy), SVG (ícones do tema padrão) e RichTextLabel.
+        # Fora: 3D, física, navegação, XR, rede, text server avançado e o resto.
+        run: |
+          scons platform=web target=template_release threads=no arch=wasm32 \
+            optimize=size lto=full debug_symbols=no deprecated=no \
+            disable_3d=yes disable_physics_2d=yes disable_physics_3d=yes \
+            disable_navigation_2d=yes disable_navigation_3d=yes disable_xr=yes \
+            vulkan=no minizip=no \
+            modules_enabled_by_default=no \
+            module_gdscript_enabled=yes \
+            module_freetype_enabled=yes \
+            module_text_server_fb_enabled=yes \
+            module_ogg_enabled=yes \
+            module_vorbis_enabled=yes \
+            module_webp_enabled=yes \
+            module_svg_enabled=yes \
+            -j"$(nproc)"
+
+      - name: Renomear e medir
+        run: |
+          mkdir -p out
+          cp godot/bin/godot.web.template_release.wasm32.nothreads.zip out/web_nothreads_release.zip
+          unzip -l out/web_nothreads_release.zip
+
+      - name: Publicar Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="web-${GODOT_VERSION}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "Web template ${GODOT_VERSION}" \
+              --notes "Export template Web enxuto (sem threads) para Godot ${GODOT_VERSION}-stable."
+          fi
+          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" out/web_nothreads_release.zip --clobber
