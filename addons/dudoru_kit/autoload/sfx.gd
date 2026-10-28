@@ -2,6 +2,7 @@ extends Node
 ## Autoload "Sfx": toca sons pelo nome. Registre depois do AudioManager.
 ##
 ##   Sfx.play("bell")       -> res://assets/audio/sfx/bell.ogg (ou .wav)
+##   Sfx.play("hop", 0.0, 1.2) -> mesmo som, com tom 20% mais agudo
 ##   Sfx.music("theme")     -> res://assets/audio/music/theme.ogg
 ##
 ## Se o arquivo ainda não existir, não faz nada: dá pra deixar tudo ligado
@@ -29,12 +30,12 @@ var volume := {
 var _cache := {}  # nome -> AudioStream (ou null se não existe)
 
 
-func play(sound: String, volume_db := 0.0) -> void:
+func play(sound: String, volume_db := 0.0, pitch_scale := 1.0) -> void:
 	if sound == "":
 		return
 	var stream := _find(SFX_DIR, sound)
 	if stream and _has_manager():
-		AudioManager.play_sfx(stream, volume_db + volume.get(sound, 0.0), pitch.get(sound, 0.0))
+		AudioManager.play_sfx(stream, volume_db + volume.get(sound, 0.0), pitch.get(sound, 0.0), pitch_scale)
 
 
 func music(track: String, fade_time := 0.8) -> void:

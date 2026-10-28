@@ -35,7 +35,8 @@ func _ready() -> void:
 
 ## Toca um efeito sonoro usando o primeiro player livre do pool.
 ## pitch_variation adiciona uma variação aleatória de tom (ex: 0.1 = ±10%).
-func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_variation: float = 0.0) -> void:
+## pitch_scale é o tom base (1.0 = original, 1.2 = mais agudo).
+func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_variation: float = 0.0, pitch_scale: float = 1.0) -> void:
 	if stream == null:
 		push_warning("AudioManager.play_sfx: stream nulo.")
 		return
@@ -43,7 +44,7 @@ func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_variation: floa
 	var player := _get_free_sfx_player()
 	player.stream = stream
 	player.volume_db = volume_db
-	player.pitch_scale = 1.0 + randf_range(-pitch_variation, pitch_variation)
+	player.pitch_scale = pitch_scale + randf_range(-pitch_variation, pitch_variation)
 	player.play()
 
 
