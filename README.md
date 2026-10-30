@@ -2,7 +2,7 @@
 
 Base comum dos jogos do estúdio Dudoru: o que todo jogo precisa e não muda de um pro outro. Traz também alguns componentes visuais padrão (mãozinha do tutorial, barra de bolinhas, tema com a fonte Baloo 2) que cada jogo pode trocar pela própria arte.
 
-**Versão:** 0.4.0 · **Godot:** 4.7.2 (Compatibility)
+**Versão:** 0.5.0 · **Godot:** 4.7.2 (Compatibility)
 
 ## O que tem
 
@@ -17,6 +17,7 @@ addons/dudoru_kit/
 ├── ui/
 │   ├── title_screen.gd   TitleScreen   logo com pop/flutuar/brilho, Novo jogo/Continuar
 │   ├── tutorial_hint.gd  dica do tutorial que se posiciona ao lado do alvo
+│   ├── tutorial_hint.tscn  cena pronta da dica (painel, texto e botão de leitura)
 │   ├── tutorial_hand.gd  TutorialHand  mãozinha do tutorial (arrastar e tocar)
 │   ├── progress_dots.gd  ProgressDots  barra de progresso em bolinhas
 │   ├── pickable.gd       Pickable      objeto clicável com brilho de seleção
@@ -51,6 +52,10 @@ Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloa
 - **Tema Baloo 2:** em Project Settings → GUI → Theme → Custom, aponte para `addons/dudoru_kit/theme/dudoru_theme.tres`. A variação `BoldLabel` usa a Bold.
 - **Sfx:** `Sfx.play(nome, volume_db, pitch_scale)`. O 3º parâmetro é o tom base (1.0 = original), somado à variação aleatória de `Sfx.pitch`.
 
+## Novidades da 0.5
+
+- **TutorialHint pronta:** `ui/tutorial_hint.tscn` já vem montada com o painel creme (`assets/hint_panel.png`, 9-slice), o texto em Baloo 2 tamanho 24 e o botão de leitura (`assets/speaker.png`). No jogo, é só instanciar a cena e marcar `%TutorialHint`. Para outra arte, troque a textura do painel ou do botão na instância.
+
 ## Novidades da 0.4
 
 - **Tema padrão:** Baloo 2 SemiBold, tamanho 28, em todo Label e Button sem precisar configurar. O plugin aponta Project Settings → GUI → Theme → Custom para `dudoru_theme.tres` ao ser ativado. Textos de outro tamanho: Theme Overrides no próprio nó.
@@ -68,6 +73,7 @@ Nunca edite `addons/dudoru_kit` dentro de um jogo. Corrija aqui, suba a versão 
 
 ## Histórico
 
+- **0.5.0:** cena pronta da TutorialHint com painel e botão de leitura.
 - **0.4.0:** tema Baloo 2 tamanho 28 como padrão do projeto; autoload UiFx com pulinho automático nos botões.
 - **0.3.0:** TutorialHand, ProgressDots, shader de outline e tema Baloo 2 vindos do Pattern Grove. `Sfx.play` e `AudioManager.play_sfx` ganham `pitch_scale`.
 - **0.2.0:** LoL, textos, Sfx, tela de título, dica de tutorial, Pickable, SpeakButton e shaders vindos do Slice by Slice. Template web publicado como Release. Opção `dudoru/force_tts_buttons` substitui a constante `FORCE_TTS_BUTTONS`.
