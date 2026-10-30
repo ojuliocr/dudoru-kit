@@ -2,7 +2,7 @@
 
 Base comum dos jogos do estúdio Dudoru: o que todo jogo precisa e não muda de um pro outro. Traz também alguns componentes visuais padrão (mãozinha do tutorial, barra de bolinhas, tema com a fonte Baloo 2) que cada jogo pode trocar pela própria arte.
 
-**Versão:** 0.3.0 · **Godot:** 4.7.2 (Compatibility)
+**Versão:** 0.4.0 · **Godot:** 4.7.2 (Compatibility)
 
 ## O que tem
 
@@ -12,7 +12,8 @@ addons/dudoru_kit/
 │   ├── text.gd           T       textos de data/texts/<idioma>.json
 │   ├── audio_manager.gd  AudioManager   players de música e efeitos
 │   ├── sfx.gd            Sfx     toca som pelo nome do arquivo
-│   └── lol.gd            LoL     integração Legends of Learning + save local
+│   ├── lol.gd            LoL     integração Legends of Learning + save local
+│   └── ui_fx.gd          UiFx    pulinho automático em todo botão
 ├── ui/
 │   ├── title_screen.gd   TitleScreen   logo com pop/flutuar/brilho, Novo jogo/Continuar
 │   ├── tutorial_hint.gd  dica do tutorial que se posiciona ao lado do alvo
@@ -31,7 +32,7 @@ addons/dudoru_kit/
     └── saturation.gdshader
 ```
 
-Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloads entram nesta ordem: `T`, `AudioManager`, `Sfx`, `LoL`. O autoload do jogo (`Game`) vem depois deles.
+Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloads entram nesta ordem: `T`, `AudioManager`, `Sfx`, `LoL`, `UiFx`, e o tema do kit vira o tema do projeto (se ainda não houver um). O autoload do jogo (`Game`) vem depois deles.
 
 ## Convenções que todo jogo segue
 
@@ -50,6 +51,11 @@ Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloa
 - **Tema Baloo 2:** em Project Settings → GUI → Theme → Custom, aponte para `addons/dudoru_kit/theme/dudoru_theme.tres`. A variação `BoldLabel` usa a Bold.
 - **Sfx:** `Sfx.play(nome, volume_db, pitch_scale)`. O 3º parâmetro é o tom base (1.0 = original), somado à variação aleatória de `Sfx.pitch`.
 
+## Novidades da 0.4
+
+- **Tema padrão:** Baloo 2 SemiBold, tamanho 28, em todo Label e Button sem precisar configurar. O plugin aponta Project Settings → GUI → Theme → Custom para `dudoru_theme.tres` ao ser ativado. Textos de outro tamanho: Theme Overrides no próprio nó.
+- **UiFx:** todo botão afunda ao apertar e volta com um pulinho. Pra desligar num botão: Metadata `no_bounce = true`. Pickable e SpeakButton ficam de fora. Se um jogo já anima um botão por código (ex.: o Conferir do Pick & Weigh), marque `no_bounce` nele ou apague a animação própria.
+
 ## Template web (export enxuto)
 
 O workflow **Build Web Template** compila o export template Web sem 3D/física/threads e publica em **Releases** como `web-<versão>/web_nothreads_release.zip`. Os jogos baixam dali; o zip não é commitado em nenhum repo.
@@ -62,6 +68,7 @@ Nunca edite `addons/dudoru_kit` dentro de um jogo. Corrija aqui, suba a versão 
 
 ## Histórico
 
+- **0.4.0:** tema Baloo 2 tamanho 28 como padrão do projeto; autoload UiFx com pulinho automático nos botões.
 - **0.3.0:** TutorialHand, ProgressDots, shader de outline e tema Baloo 2 vindos do Pattern Grove. `Sfx.play` e `AudioManager.play_sfx` ganham `pitch_scale`.
 - **0.2.0:** LoL, textos, Sfx, tela de título, dica de tutorial, Pickable, SpeakButton e shaders vindos do Slice by Slice. Template web publicado como Release. Opção `dudoru/force_tts_buttons` substitui a constante `FORCE_TTS_BUTTONS`.
 - **0.1.0:** AudioManager.
