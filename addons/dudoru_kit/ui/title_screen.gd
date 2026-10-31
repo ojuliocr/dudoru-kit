@@ -90,6 +90,9 @@ func _set_shine(value: float) -> void:
 
 
 func _show_buttons() -> void:
+	# Transparentes antes do show: senão aparecem cheios no frame de espera abaixo (a "piscada").
+	for b: Button in [new_button, continue_button]:
+		b.modulate.a = 0.0
 	buttons.show()
 	# Espera o container posicionar os botões para o pivô ficar certo.
 	await get_tree().process_frame
