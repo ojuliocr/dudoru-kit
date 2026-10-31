@@ -11,13 +11,26 @@ const POP_SCALE := 1.08
 
 
 func _ready() -> void:
-	get_tree().node_added.connect(_on_node_added)
+	get_tree().node_added.connect(_hook)
+	# A cena principal entra na árvore junto com os autoloads, antes deste _ready:
+	# os botões dela não passam pelo node_added, então são conectados aqui.
+	_scan(get_tree().root)
 
 
-func _on_node_added(node: Node) -> void:
-	if node is BaseButton and not (node is Pickable or node is SpeakButton):
-		node.button_down.connect(_on_down.bind(node))
-		node.button_up.connect(_on_up.bind(node))
+func _scan(n: Node) -> void:
+	_hook(n)
+	for c in n.get_children():
+		_scan(c)
+
+
+func _hook(node: Node) -> void:
+	if not node is BaseButton or node is Pickable or node is SpeakButton:
+		return
+	if node.has_meta("_fx_hooked"):
+		return
+	node.set_meta("_fx_hooked", true)
+	node.button_down.connect(_on_down.bind(node))
+	node.button_up.connect(_on_up.bind(node))
 
 
 func _on_down(b: BaseButton) -> void:
