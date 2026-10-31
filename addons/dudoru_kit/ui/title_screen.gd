@@ -21,6 +21,7 @@ const SHINE_INTERVAL := 3.2
 
 const BUTTON_STAGGER := 0.12
 const BUTTON_TIME := 0.3
+const PRESS_WAIT := 0.3   # duração do pulinho do botão (UiFx) antes de sair do título
 
 @onready var logo: TextureRect = %TitleLogo
 @onready var new_button: Button = %NewGameButton
@@ -31,6 +32,7 @@ var _logo_base_y := 0.0
 var _float_time := 0.0
 var _floating := false
 var _shine_tween: Tween
+var _starting := false
 
 
 func _ready() -> void:
@@ -105,7 +107,12 @@ func _show_buttons() -> void:
 
 
 func _on_pressed(continue_game: bool) -> void:
+	if _starting:
+		return
+	_starting = true
 	Sfx.play("click")
+	# Dá tempo do pulinho do UiFx terminar antes de esconder os botões.
+	await get_tree().create_timer(PRESS_WAIT).timeout
 	buttons.hide()
 	play_pressed.emit(continue_game)
 
