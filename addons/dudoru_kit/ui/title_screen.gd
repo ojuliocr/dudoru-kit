@@ -43,8 +43,8 @@ func _ready() -> void:
 	var logo_in := _pop_logo()
 	if not LoL.is_initialized:
 		await LoL.initialized
-	new_button.text = T.t("title.new_game")
-	continue_button.text = T.t("title.continue")
+	new_button.text = T.t("title.new_game").to_upper()
+	continue_button.text = T.t("title.continue").to_upper()
 	continue_button.visible = LoL.has_saved_game()
 	if logo_in.is_running():
 		await logo_in.finished
