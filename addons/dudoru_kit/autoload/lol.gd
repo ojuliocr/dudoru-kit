@@ -12,10 +12,13 @@ extends Node
 ##   LoL.submit_progress(atual, maximo)
 ##   LoL.save_state({...})
 ##   LoL.complete()
-##   LoL.speak("chave.do.texto")
+##   LoL.speak("chave.do.texto")   -> voz da LoL; fora dela, voz do navegador
 
 signal initialized
 signal paused_changed(is_paused: bool)
+## Fala começou / terminou (os botões de leitura usam pra trocar o ícone).
+signal speech_started(key: String)
+signal speech_finished(key: String)
 
 ## Quanto esperar a LoL responder quando o jogo está dentro de um iframe (LoL ou itch).
 const START_TIMEOUT := 1.5
@@ -25,14 +28,24 @@ const PROGRESS_KEY := "progress"
 ## Project Settings → dudoru/force_tts_buttons: mostra os botões de leitura fora da LoL
 ## pra testar. Só vale em build de debug (editor); a build de release nunca força.
 const FORCE_TTS_SETTING := "dudoru/force_tts_buttons"
+## Voz do navegador (fora da LoL): idioma do jogo → código da voz, e velocidade (1 = normal).
+const BROWSER_VOICES := {"pt": "pt-BR", "en": "en-US", "es": "es-ES"}
+const BROWSER_RATE := 0.9
+## Na LoL (e no editor) não dá pra saber quando a fala acaba: estima pelo tamanho do texto.
+const SPEECH_CHARS_PER_SEC := 11.0
+const SPEECH_MIN_TIME := 1.0
 
 var is_initialized := false
 var in_lol := false
 var saved_state: Dictionary = {}
 var _completed := false  # depois do complete, progresso não é mais enviado (não pode diminuir)
 var _force_tts := false
+var _browser_tts := false   # navegador com speechSynthesis; só usado fora da LoL
 
 var _js_callback  # precisa ficar guardado, senão o Godot descarta o callback
+var _tts_end_callback
+var _speech_id := 0
+var _speech_key := ""
 var _got_start := false
 var _got_language := false
 var _got_state := false
@@ -40,7 +53,13 @@ var _got_state := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_force_tts = OS.is_debug_build() and bool(ProjectSettings.get_setting(FORCE_TTS_SETTING, false))
+	# rodando pelo editor os botões de leitura sempre aparecem, pra dar pra ver o layout
+	_force_tts = OS.has_feature("editor") or \
+		(OS.is_debug_build() and bool(ProjectSettings.get_setting(FORCE_TTS_SETTING, false)))
+	if OS.has_feature("web"):
+		_browser_tts = bool(JavaScriptBridge.eval("'speechSynthesis' in window", true))
+		# algumas vozes só carregam depois do primeiro pedido
+		JavaScriptBridge.eval("window.speechSynthesis && window.speechSynthesis.getVoices();", true)
 	# Fora do navegador (editor) ou fora de um iframe não existe LoL: segue na hora.
 	if not OS.has_feature("web") or not _in_iframe():
 		_on_start_timeout.call_deferred()
@@ -83,14 +102,67 @@ func has_saved_game() -> bool:
 	return int(saved_state.get(PROGRESS_KEY, 0)) > 0
 
 
-## Os botões de leitura só fazem sentido onde alguém lê: na LoL (ou forçado pra teste).
+## Os botões de leitura aparecem onde alguém lê: na LoL, no navegador com voz (itch, site)
+## ou forçado pra teste.
 func has_tts() -> bool:
-	return in_lol or _force_tts
+	return in_lol or _browser_tts or _force_tts
 
 
-## Texto pra fala: a LoL lê o texto da chave no idioma atual.
+## Lê o texto da chave no idioma atual. Na LoL, a voz é da plataforma (obrigatório lá);
+## fora dela, usa a voz do navegador (Web Speech API), que varia de aparelho pra aparelho.
+## Uma fala nova interrompe a anterior.
 func speak(key: String) -> void:
-	_send("speakText", {"key": key})
+	var text := T.t(key)
+	if _speech_key != "":
+		speech_finished.emit(_speech_key)
+	_speech_id += 1
+	_speech_key = key
+	var id := _speech_id
+	speech_started.emit(key)
+	var estimate := maxf(SPEECH_MIN_TIME, text.length() / SPEECH_CHARS_PER_SEC)
+	if in_lol:
+		_send("speakText", {"key": key})
+	elif _browser_tts:
+		_speak_browser(text, id)
+		estimate *= 3.0   # o fim de verdade vem do navegador; o timer é só uma rede de segurança
+	elif _force_tts:
+		print("[fala] ", text)   # no editor não há voz: mostra no Output o que seria lido
+	get_tree().create_timer(estimate, true, false, true).timeout.connect(_end_speech.bind(id))
+
+
+func _end_speech(id: int) -> void:
+	if id != _speech_id or _speech_key == "":
+		return
+	var key := _speech_key
+	_speech_key = ""
+	speech_finished.emit(key)
+
+
+func _speak_browser(text: String, id: int) -> void:
+	if _tts_end_callback == null:
+		_tts_end_callback = JavaScriptBridge.create_callback(_on_browser_speech_end)
+		JavaScriptBridge.get_interface("window").__dudoruTtsEnd = _tts_end_callback
+	var lang: String = BROWSER_VOICES.get(T.language, T.language)
+	JavaScriptBridge.eval("""
+		(function (text, lang, rate, id) {
+			var s = window.speechSynthesis;
+			if (!s) return;
+			s.cancel();
+			var u = new SpeechSynthesisUtterance(text);
+			u.lang = lang;
+			u.rate = rate;
+			var all = s.getVoices();
+			var voice = all.find(function (v) { return v.lang && v.lang.toLowerCase() === lang.toLowerCase(); })
+				|| all.find(function (v) { return v.lang && v.lang.toLowerCase().indexOf(lang.slice(0, 2).toLowerCase()) === 0; });
+			if (voice) u.voice = voice;
+			u.onend = u.onerror = function () { if (window.__dudoruTtsEnd) window.__dudoruTtsEnd(id); };
+			s.speak(u);
+		})(%s, %s, %s, %d);
+	""" % [JSON.stringify(text), JSON.stringify(lang), BROWSER_RATE, id], true)
+
+
+func _on_browser_speech_end(args: Array) -> void:
+	_end_speech(int(args[0]))
 
 
 # --- JavaScript ---------------------------------------------------------------
