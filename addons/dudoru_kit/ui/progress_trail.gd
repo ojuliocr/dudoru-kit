@@ -8,28 +8,34 @@ extends Control
 @export var steps := 10:
 	set(v):
 		steps = maxi(v, 1)
+		_done = mini(_done, steps)
+		_shown = minf(_shown, float(steps))
 		queue_redraw()
 
 @export_group("Tamanhos")
 @export var dot_radius := 9.0
 @export var line_width := 6.0
+@export var ring_width := 4.0         # anel amarelo da fase atual, colado no contorno dela
 @export var padding := 24.0          # espaço entre a borda do quadro e a primeira/última bolinha
 @export var show_frame := true
 
 @export_group("Cores")
-@export var frame_color := Color("fdf3df")
+@export var frame_color := Color("e7e1d8")
 @export var ink := Color("3a2230")
 @export var done_color := Color("b3d25a")
 @export var current_ring := Color("f2c23d")
-@export var empty_color := Color("e6d4b0")
+@export var empty_color := Color("c3a996")
 
-const FILL_TIME := 0.45
+const FILL_TIME := 0.45   # a linha enchendo até a nova fase atual
+const RING_TIME := 0.3    # o anel da fase atual crescendo
+const OUTLINE := 2.5      # contorno das bolinhas
 
 var _done := 0
-var _shown := 0.0         # quanto da linha está cheio (em bolinhas); animado
-var _pop: Array[float] = []
-var _tween: Tween
-var _t := 0.0
+var _shown := 0.0         # até qual bolinha a linha chega (animado)
+var _ring := 1.0          # 0..1, o anel da atual crescendo
+var _line_tween: Tween
+var _ring_tween: Tween
+var _frame_box: StyleBoxFlat
 
 
 func _ready() -> void:
@@ -38,37 +44,37 @@ func _ready() -> void:
 
 
 ## done = quantas fases já foram feitas. A bolinha seguinte vira a atual.
+## A feita fica verde na hora, a linha enche até a próxima e o anel amarelo só aparece
+## quando a linha chega nela.
 func set_progress(done: int, animate := true) -> void:
 	done = clampi(done, 0, steps)
-	if _tween:
-		_tween.kill()
-	if animate and done > _done:
-		_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		_tween.tween_method(_set_shown, _shown, float(done), FILL_TIME)
-	else:
-		_set_shown(float(done))
+	var forward := done > _done   # voltar (jogar de novo) não anima
 	_done = done
-
-
-func _set_shown(v: float) -> void:
-	# a bolinha que a linha acabou de alcançar dá um pop
-	var before := int(floor(_shown))
-	_shown = v
-	var now := int(floor(v))
-	if _pop.size() != steps:
-		_pop.resize(steps)
-		_pop.fill(1.0)
-	for i in range(before, mini(now, steps)):
-		var k := i
-		var tw := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_method(func(s: float) -> void: _pop[k] = s; queue_redraw(), 0.6, 1.0, 0.3)
+	if _line_tween:
+		_line_tween.kill()
+	if _ring_tween:
+		_ring_tween.kill()
+	if animate and forward:
+		_line_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_line_tween.tween_method(_set_shown, _shown, float(done), FILL_TIME)
+		_ring = 0.0
+		_ring_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_ring_tween.tween_interval(FILL_TIME * 0.6)   # a curva da linha já está quase no fim aqui
+		_ring_tween.tween_method(_set_ring, 0.0, 1.0, RING_TIME)
+	else:
+		_shown = float(done)
+		_ring = 1.0
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
-	if _done < steps and is_visible_in_tree():
-		_t += delta
-		queue_redraw()
+func _set_shown(v: float) -> void:
+	_shown = v
+	queue_redraw()
+
+
+func _set_ring(v: float) -> void:
+	_ring = v
+	queue_redraw()
 
 
 func _x(i: int) -> float:
@@ -80,32 +86,43 @@ func _x(i: int) -> float:
 func _draw() -> void:
 	var cy := size.y / 2.0
 	if show_frame:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = frame_color
-		sb.border_color = ink
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(int(size.y / 2.0))
-		sb.shadow_color = Color(ink, 0.25)
-		sb.shadow_offset = Vector2(0, 4)
-		sb.anti_aliasing = true
-		draw_style_box(sb, Rect2(Vector2.ZERO, size))
-	# trilha vazia e a parte cheia
+		draw_style_box(_frame(), Rect2(Vector2.ZERO, size))
+	# trilha vazia e a parte cheia (até o centro da bolinha atual)
 	draw_line(Vector2(_x(0), cy), Vector2(_x(steps - 1), cy), empty_color, line_width, true)
 	var reach := clampf(_shown, 0.0, steps - 1.0)
-	var x_reach := lerpf(_x(int(floor(reach))), _x(mini(int(floor(reach)) + 1, steps - 1)), reach - floor(reach))
-	if _shown > 0.0:
+	var i0 := int(floor(reach))
+	var x_reach := lerpf(_x(i0), _x(mini(i0 + 1, steps - 1)), reach - i0)
+	if reach > 0.0:
 		draw_line(Vector2(_x(0), cy), Vector2(x_reach, cy), ink, line_width, true)
-	# bolinhas
+	# bolinhas: círculos cheios empilhados (anel, contorno, recheio), sem costura entre eles
 	for i in steps:
 		var c := Vector2(_x(i), cy)
-		var s: float = _pop[i] if i < _pop.size() else 1.0
 		if i < _done:
-			draw_circle(c, dot_radius * s, done_color)
-			draw_arc(c, dot_radius * s, 0, TAU, 24, ink, 2.5, true)
-		elif i == _done:
-			var r := dot_radius * 1.15 * (1.0 + sin(_t * 4.0) * 0.06)
-			draw_arc(c, r + 4.0, 0, TAU, 28, current_ring, 4.0, true)
-			draw_circle(c, r, frame_color)
-			draw_arc(c, r, 0, TAU, 24, ink, 2.5, true)
+			_dot(c, dot_radius, done_color, 0.0)
+		elif i == _done and _ring > 0.0:
+			_dot(c, dot_radius * (1.0 + 0.15 * _ring), frame_color, ring_width * maxf(_ring, 0.0))
 		else:
-			draw_circle(c, dot_radius, empty_color)
+			draw_circle(c, dot_radius, empty_color, true, -1.0, true)
+
+
+## Bolinha com contorno e, se ring > 0, anel amarelo colado por fora do contorno.
+func _dot(c: Vector2, r: float, fill: Color, ring: float) -> void:
+	var edge := r + OUTLINE / 2.0
+	if ring > 0.0:
+		draw_circle(c, edge + ring, current_ring, true, -1.0, true)
+	draw_circle(c, edge, ink, true, -1.0, true)
+	draw_circle(c, r - OUTLINE / 2.0, fill, true, -1.0, true)
+
+
+func _frame() -> StyleBoxFlat:
+	if _frame_box == null:
+		_frame_box = StyleBoxFlat.new()
+		_frame_box.set_border_width_all(3)
+		_frame_box.shadow_size = 1
+		_frame_box.shadow_offset = Vector2(0, 4)
+		_frame_box.anti_aliasing = true
+	_frame_box.bg_color = frame_color
+	_frame_box.border_color = ink
+	_frame_box.shadow_color = Color(ink, 0.25)
+	_frame_box.set_corner_radius_all(int(size.y / 2.0))
+	return _frame_box
