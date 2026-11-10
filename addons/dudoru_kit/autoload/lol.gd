@@ -118,6 +118,7 @@ func speak(key: String) -> void:
 	_speech_id += 1
 	_speech_key = key
 	var id := _speech_id
+	_duck(true)
 	speech_started.emit(key)
 	var estimate := maxf(SPEECH_MIN_TIME, text.length() / SPEECH_CHARS_PER_SEC)
 	if in_lol:
@@ -135,7 +136,15 @@ func _end_speech(id: int) -> void:
 		return
 	var key := _speech_key
 	_speech_key = ""
+	_duck(false)
 	speech_finished.emit(key)
+
+
+## Música mais baixa enquanto a voz fala, pra não brigarem.
+func _duck(on: bool) -> void:
+	var am := get_node_or_null("/root/AudioManager")
+	if am:
+		am.duck_music(on)
 
 
 func _speak_browser(text: String, id: int) -> void:

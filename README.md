@@ -2,7 +2,7 @@
 
 Base comum dos jogos do estúdio Dudoru: o que todo jogo precisa e não muda de um pro outro. Traz também alguns componentes visuais padrão (mãozinha do tutorial, barra de bolinhas, tema com a fonte Baloo 2) que cada jogo pode trocar pela própria arte.
 
-**Versão:** 0.5.0 · **Godot:** 4.7.2 (Compatibility)
+**Versão:** 0.8.0 · **Godot:** 4.7.2 (Compatibility)
 
 ## O que tem
 
@@ -12,8 +12,9 @@ addons/dudoru_kit/
 │   ├── text.gd           T       textos de data/texts/<idioma>.json
 │   ├── audio_manager.gd  AudioManager   players de música e efeitos
 │   ├── sfx.gd            Sfx     toca som pelo nome do arquivo
-│   ├── lol.gd            LoL     integração Legends of Learning + save local
-│   └── ui_fx.gd          UiFx    pulinho automático em todo botão
+│   ├── lol.gd            LoL     integração Legends of Learning + save local + voz
+│   ├── ui_fx.gd          UiFx    pulinho automático em todo botão
+│   └── transition.gd     Transition  fade entre telas
 ├── ui/
 │   ├── title_screen.gd   TitleScreen   logo com pop/flutuar/brilho, Novo jogo/Continuar
 │   ├── tutorial_hint.gd  dica do tutorial que se posiciona ao lado do alvo
@@ -33,7 +34,7 @@ addons/dudoru_kit/
     └── saturation.gdshader
 ```
 
-Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloads entram nesta ordem: `T`, `AudioManager`, `Sfx`, `LoL`, `UiFx`, e o tema do kit vira o tema do projeto (se ainda não houver um). O autoload do jogo (`Game`) vem depois deles.
+Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloads entram nesta ordem: `T`, `AudioManager`, `Sfx`, `LoL`, `UiFx`, `Transition`, e o tema do kit vira o tema do projeto (se ainda não houver um). O autoload do jogo (`Game`) vem depois deles.
 
 ## Convenções que todo jogo segue
 
@@ -51,6 +52,21 @@ Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloa
 - **outline.gdshader:** contorno interno em qualquer textura. Um `ShaderMaterial` compartilhado serve para todos os sprites; filhos que não devem ter contorno ficam com `use_parent_material = false`.
 - **Tema Baloo 2:** em Project Settings → GUI → Theme → Custom, aponte para `addons/dudoru_kit/theme/dudoru_theme.tres`. A variação `BoldLabel` usa a Bold.
 - **Sfx:** `Sfx.play(nome, volume_db, pitch_scale)`. O 3º parâmetro é o tom base (1.0 = original), somado à variação aleatória de `Sfx.pitch`.
+
+## Novidades da 0.8
+
+- **Transition (autoload novo):** fade escuro entre telas, por cima de tudo, bloqueando cliques enquanto cobre.
+  `await Transition.cover()` → troca as telas → `await Transition.reveal()`. Para abrir o jogo já coberto,
+  chame `Transition.cover_instant()` no `_ready` da cena principal e `Transition.reveal()` quando a primeira tela estiver pronta.
+  Cor e tempo por jogo: `Transition.color`, `Transition.duration` (padrão 0.6 s).
+  Projeto que já tinha o plugin ativo: desative e ative de novo para o autoload entrar.
+- **Voz fora da LoL:** `LoL.speak()` usa a voz do navegador (Web Speech API) no itch e no site; na LoL continua a voz da plataforma.
+  No editor, mostra no Output o texto que seria lido. Os botões de leitura sempre aparecem rodando pelo editor.
+- **Sinais de fala:** `LoL.speech_started(key)` e `LoL.speech_finished(key)`.
+- **Música abaixa durante a fala:** `AudioManager.duck_music(true/false)`, chamado sozinho pelo `LoL.speak()`.
+  Ajuste em `DUCK_DB` (padrão -10 dB) no `audio_manager.gd`.
+- **SpeakButton animado:** `speaking_frames` (lista de texturas em loop enquanto fala) e `frame_time`.
+  Padrão do estúdio: Texture Normal = `assets/speaker_2.png`, Speaking Frames = `speaker_0`, `speaker_1`, `speaker_2`.
 
 ## Novidades da 0.5
 

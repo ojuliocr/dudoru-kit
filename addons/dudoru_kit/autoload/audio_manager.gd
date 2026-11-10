@@ -6,6 +6,7 @@ extends Node
 ##   AudioManager.play_sfx(preload("res://assets/audio/click.ogg"))
 ##   AudioManager.play_music(preload("res://assets/audio/tema.ogg"))
 ##   AudioManager.stop_music()
+##   AudioManager.duck_music(true)   -> abaixa a música (ex.: enquanto uma voz fala); false volta
 ##
 ## Os buses "Music" e "SFX" são usados se existirem no projeto
 ## (Audio → Buses). Se não existirem, o áudio vai para o bus "Master".
@@ -13,10 +14,18 @@ extends Node
 const SFX_POOL_SIZE := 8
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
+## Quanto a música abaixa enquanto alguém fala, e quanto tempo leva pra abaixar/voltar.
+const DUCK_DB := -10.0
+const DUCK_DOWN_TIME := 0.15
+const DUCK_UP_TIME := 0.5
 
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _music_player: AudioStreamPlayer
 var _music_tween: Tween
+var _duck_tween: Tween
+# volume da música = base (fades e volume pedido) + duck (fala por cima)
+var _music_db := 0.0
+var _duck_db := 0.0
 
 
 func _ready() -> void:
@@ -60,9 +69,9 @@ func play_music(stream: AudioStream, fade_time: float = 0.5, volume_db: float = 
 
 	if _music_player.playing and fade_time > 0.0:
 		_music_tween = create_tween()
-		_music_tween.tween_property(_music_player, "volume_db", -40.0, fade_time * 0.5)
+		_music_tween.tween_method(_set_music_db, _music_db, -40.0, fade_time * 0.5)
 		_music_tween.tween_callback(_start_music.bind(stream, -40.0))
-		_music_tween.tween_property(_music_player, "volume_db", volume_db, fade_time * 0.5)
+		_music_tween.tween_method(_set_music_db, -40.0, volume_db, fade_time * 0.5)
 	else:
 		_start_music(stream, volume_db)
 
@@ -77,7 +86,7 @@ func stop_music(fade_time: float = 0.5) -> void:
 		return
 
 	_music_tween = create_tween()
-	_music_tween.tween_property(_music_player, "volume_db", -40.0, fade_time)
+	_music_tween.tween_method(_set_music_db, _music_db, -40.0, fade_time)
 	_music_tween.tween_callback(_music_player.stop)
 
 
@@ -85,9 +94,27 @@ func is_music_playing() -> bool:
 	return _music_player.playing
 
 
+## Abaixa (true) ou devolve (false) o volume da música, sem interromper os fades.
+func duck_music(on: bool) -> void:
+	if _duck_tween and _duck_tween.is_valid():
+		_duck_tween.kill()
+	_duck_tween = create_tween().set_trans(Tween.TRANS_SINE)
+	_duck_tween.tween_method(_set_duck_db, _duck_db, DUCK_DB if on else 0.0, DUCK_DOWN_TIME if on else DUCK_UP_TIME)
+
+
+func _set_music_db(v: float) -> void:
+	_music_db = v
+	_music_player.volume_db = _music_db + _duck_db
+
+
+func _set_duck_db(v: float) -> void:
+	_duck_db = v
+	_music_player.volume_db = _music_db + _duck_db
+
+
 func _start_music(stream: AudioStream, volume_db: float) -> void:
 	_music_player.stream = stream
-	_music_player.volume_db = volume_db
+	_set_music_db(volume_db)
 	if not _music_player.finished.is_connected(_on_music_finished):
 		_music_player.finished.connect(_on_music_finished)
 	_music_player.play()

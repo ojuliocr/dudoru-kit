@@ -12,6 +12,7 @@ const AUTOLOADS := [
 	["Sfx", BASE + "sfx.gd"],
 	["LoL", BASE + "lol.gd"],
 	["UiFx", BASE + "ui_fx.gd"],
+	["Transition", BASE + "transition.gd"],
 ]
 const FORCE_TTS_SETTING := "dudoru/force_tts_buttons"
 const THEME_SETTING := "gui/theme/custom"
