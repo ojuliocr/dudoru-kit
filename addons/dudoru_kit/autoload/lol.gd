@@ -13,6 +13,7 @@ extends Node
 ##   LoL.save_state({...})
 ##   LoL.complete()
 ##   LoL.speak("chave.do.texto")   -> voz da LoL; fora dela, voz do navegador
+##   LoL.stop_speaking()           -> corta a fala (botões e transição já chamam sozinhos)
 
 signal initialized
 signal paused_changed(is_paused: bool)
@@ -129,6 +130,20 @@ func speak(key: String) -> void:
 	elif _force_tts:
 		print("[fala] ", text)   # no editor não há voz: mostra no Output o que seria lido
 	get_tree().create_timer(estimate, true, false, true).timeout.connect(_end_speech.bind(id))
+
+
+## Corta a fala atual (no navegador para na hora; na LoL a voz da plataforma pode terminar a frase).
+## Chamado sozinho por qualquer botão (UiFx) e pelo Transition.cover().
+func stop_speaking() -> void:
+	if _speech_key == "":
+		return
+	_speech_id += 1   # invalida o timer e o aviso de fim da fala cortada
+	if _browser_tts:
+		JavaScriptBridge.eval("window.speechSynthesis && window.speechSynthesis.cancel();", true)
+	var key := _speech_key
+	_speech_key = ""
+	_duck(false)
+	speech_finished.emit(key)
 
 
 func _end_speech(id: int) -> void:

@@ -62,6 +62,8 @@ Ao ativar o plugin (**Project Settings → Plugins → Dudoru Kit**), os autoloa
   Projeto que já tinha o plugin ativo: desative e ative de novo para o autoload entrar.
 - **Voz fora da LoL:** `LoL.speak()` usa a voz do navegador (Web Speech API) no itch e no site; na LoL continua a voz da plataforma.
   No editor, mostra no Output o texto que seria lido. Os botões de leitura sempre aparecem rodando pelo editor.
+- **Cortar a fala:** `LoL.stop_speaking()`. Já é chamado sozinho ao apertar qualquer botão (menos o SpeakButton)
+  e no `Transition.cover()`. Arrastar/pegar objetos (Pickable) não corta. Na LoL a voz da plataforma pode terminar a frase.
 - **Sinais de fala:** `LoL.speech_started(key)` e `LoL.speech_finished(key)`.
 - **Música abaixa durante a fala:** `AudioManager.duck_music(true/false)`, chamado sozinho pelo `LoL.speak()`.
   Ajuste em `DUCK_DB` (padrão -10 dB) no `audio_manager.gd`.

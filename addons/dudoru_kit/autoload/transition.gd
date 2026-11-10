@@ -29,6 +29,9 @@ func _ready() -> void:
 
 
 func cover() -> void:
+	var lol := get_node_or_null("/root/LoL")
+	if lol:
+		lol.stop_speaking()   # a fala não continua por cima da tela nova
 	_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	await _run(1.0)
 

@@ -5,6 +5,7 @@ extends Node
 ## Pra desligar num botão: Inspector → Metadata → no_bounce (bool) = true,
 ## ou no código: botao.set_meta("no_bounce", true).
 ## Pickable e SpeakButton ficam de fora porque já têm animação própria.
+## Apertar qualquer botão também corta a fala que estiver tocando (o SpeakButton não: ele fala).
 
 const PRESS_SCALE := 0.92
 const POP_SCALE := 1.08
@@ -34,6 +35,11 @@ func _hook(node: Node) -> void:
 
 
 func _on_down(b: BaseButton) -> void:
+	# no button_down (antes do pressed), pra não cortar uma fala que o próprio botão vá iniciar
+	if not b.disabled:
+		var lol := get_node_or_null("/root/LoL")
+		if lol:
+			lol.stop_speaking()
 	if b.disabled or b.get_meta("no_bounce", false):
 		return
 	b.set_meta("_fx_down", true)
